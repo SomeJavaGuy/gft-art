@@ -1,5 +1,4 @@
 const express = require('express')
-const mongoose = require('./mongoose')
 const passport = require('passport')
 const jwt = require('jsonwebtoken')
 const expressJwt = require('express-jwt')
@@ -40,7 +39,6 @@ app.get('/', (req, res) => {
 
 router.route('/auth/twitter/reverse')
   .post(function(req, res) {
-    console.log(req)
     request.post({
       url: 'https://api.twitter.com/oauth/request_token',
       oauth: {

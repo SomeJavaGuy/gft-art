@@ -1,6 +1,7 @@
 const passport = require('passport')
 const TwitterTokenStrategy = require('passport-twitter-token')
 const twitterConfig = require('./twitterConfig')
+const db = require('./db')
 
 module.exports = function () {
   passport.use(new TwitterTokenStrategy({
@@ -9,10 +10,8 @@ module.exports = function () {
       includeEmail: true
     },
     function (token, tokenSecret, profile, done) {
-      console.log(token, tokenSecret, profile, done)
-      // TODO: replace with leveldb logic
-      User.upsertTwitterUser(token, tokenSecret, profile, function(err, user) {
-        return done(err, user)
-      })
+      db.upsertTwitterUser(token, tokenSecret, profile)
+        .then((user) => done(null, user))
+        .catch((err) => done(err, null))
     }))
 }
