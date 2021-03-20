@@ -94,17 +94,17 @@ router.route('/auth/twitter')
 
       next();
     });
-  }, passport.authenticate('twitter-token', {session: false}), function(req, res, next) {
-      if (!req.user) {
-        return res.send(401, 'User Not Authenticated');
-      }
+  }, passport.authenticate('twitter-token', { session: false }), function (req, res, next) {
+    if (!req.user) {
+      return res.send(401, 'User Not Authenticated');
+    }
 
-      req.auth = {
-        id: req.user.id
-      }
+    req.auth = {
+      id: req.user.id
+    }
 
-      return next();
-    }, generateToken, sendToken)
+    return next();
+  }, generateToken, sendToken)
 
 router.get('/gft/twitter/recipients/:username', function (req, res) {
   // TODO: must be an authorized request so we don't share burners with everyone
