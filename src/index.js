@@ -117,15 +117,15 @@ router.get('/gft/twitter/recipients/:username', function (req, res) {
 })
 
 router.post('/gft/twitter', function (req, res) {
-  const { usernames, tokenIds } = req.body
-
+  let usernames, tokenIds, contractAddress;
   try {
+    ({ usernames, tokenIds, contractAddress } = req.body)
     assert(usernames.length == tokenIds.length)
   } catch (err) {
     res.status(500).send({ error: err.message })
   }
 
-  db.createTwitterGft(usernames, tokenIds).then(() => {
+  db.createTwitterGft(contractAddress, usernames, tokenIds).then(() => {
     res.sendStatus(200)
   })
     .catch((err) => {

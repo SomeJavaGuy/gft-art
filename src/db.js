@@ -3,6 +3,7 @@ require('dotenv').config()
 const levelup = require('levelup')
 const s3leveldown = require('s3leveldown')
 const AWS = require('aws-sdk')
+const ethWallet = require("ethereumjs-wallet").default
 
 const s3 = new AWS.S3({
   apiVersion: '2006-03-01',
@@ -24,49 +25,58 @@ async function getTwitterRecipientGfts(username) {
   return JSON.parse(gfts)
 }
 
-async function createTwitterGft(usernames, tokenIds) {
+async function createTwitterGft(tokenAddress, usernames, tokenIds) {
   const batch = db.batch()
 
   const createdDate = datePath()
   const gftKey = makeKey(prefix.GFT_TWITTER, createdDate)
   const gftValue = {
     createdDate,
+    tokenAddress,
     usernames,
     tokenIds
   }
   await batch.put(gftKey, gftValue)
 
+  const userCache = {}
+
   for (let index = 0; index < usernames.length; index++) {
     const username = usernames[index]
     const tokenId = tokenIds[index]
+    console.log(username, tokenId)
     const key = makeKey(prefix.GFT_TWITTER_RECIPIENTS, username)
 
-    let gfts = []
+    // handle repeated users
+    let cache = userCache[key]
+    if (!cache) {
+      let gfts = []
+      try {
+        const result = await db.get(key, { asBuffer: false })
+        if (result) gfts = JSON.parse(result).gfts
+      } catch (err) {
+        if (err.notFound) {
+          // pass
+        } else {
+          throw err
+        }
+      }
 
-    try {
-      const result = await db.get(key, { asBuffer: false })
-      if (result) {
-        gfts = JSON.parse(result).gfts
-      }
-    } catch (err) {
-      if (err.notFound) {
-        // pass
-      } else {
-        throw err
-      }
+      userCache[key] = { burner: ethWallet.generate(), prevGfts: gfts };
+      cache = userCache[key]
     }
 
-    // TODO: Add burner key pair and nft media
-    gfts.push({
+    gfts = [...cache.prevGfts, {
       createdDate,
       tokenId,
-      // tokenAddress,
-      // tokenUrl,
-      // burner key pair
-    })
-    const value = {
-      gfts
-    }
+      tokenAddress,
+      burnerAddress: cache.burner.getAddressString(),
+      burnerKey: cache.burner.getPrivateKeyString()
+      // tokenUrl and balance can be retrieved in frontend
+    }]
+
+    userCache[key].prevGfts = gfts
+
+    const value = { gfts }
     await batch.put(key, JSON.stringify(value))
   }
 
