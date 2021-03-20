@@ -1,3 +1,4 @@
+const assert = require('assert')
 const express = require('express')
 const passport = require('passport')
 const jwt = require('jsonwebtoken')
@@ -8,8 +9,10 @@ const request = require('request')
 const morgan = require('morgan')
 
 const { generateToken, sendToken } = require('./auth')
+const db = require('./db')
 const configurePassport = require('./passport.js')
 const twitterConfig = require('./twitterConfig.js')
+
 
 const PORT = 4000
 
@@ -49,7 +52,7 @@ app.get('/', (req, res) => {
 })
 
 router.route('/auth/twitter/reverse')
-  .post(function(req, res) {
+  .post(function (req, res) {
     request.post({
       url: 'https://api.twitter.com/oauth/request_token',
       oauth: {
@@ -102,6 +105,33 @@ router.route('/auth/twitter')
 
       return next();
     }, generateToken, sendToken)
+
+router.get('/gft/twitter/recipients/:username', function (req, res) {
+  // TODO: must be an authorized request so we don't share burners with everyone
+  console.log(req.params)
+  db.getTwitterRecipientGfts(req.params.username).then((data) => {
+    res.send(JSON.stringify(data))
+  })
+    .catch((err) => {
+      res.status(500).send(err.message)
+    })
+})
+
+router.post('/gft/twitter', function (req, res) {
+  try {
+    const { usernames, tokenIds } = req.body
+    assert(usernames.length == tokenIds.length)
+  } catch (err) {
+    res.status(500).send({ error: err.message })
+  }
+
+  db.createTwitterGft(usernames, tokenIds).then(() => {
+    res.sendStatus(200)
+  })
+    .catch((err) => {
+      res.status(500).send({ error: err.message })
+    })
+})
 
 app.use('/api/v1', router)
 

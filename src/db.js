@@ -13,7 +13,53 @@ const s3 = new AWS.S3({
 const db = levelup(s3leveldown(process.env.AWS_S3_BUCKET_NAME, s3))
 
 const prefix = {
-  USER_TWITTER: 'users/twitter/'
+  USER_TWITTER: 'users/twitter/',
+  GFT_TWITTER: 'gft/twitter/',
+  GFT_TWITTER_RECIPIENTS: 'gft/twitter/recipients/',
+}
+
+async function getTwitterRecipientGfts(username) {
+  const key = makeKey(prefix.GFT_TWITTER_RECIPIENTS, username)
+  const gfts = await db.get(key, { asBuffer: false })
+  return JSON.parse(gfts)
+}
+
+async function createTwitterGft(usernames, tokenIds) {
+  const batch = db.batch()
+
+  const createdDate = datePath()
+  const gftKey = makeKey(prefix.GFT_TWITTER, createdDate)
+  const gftValue = {
+    createdDate,
+    usernames,
+    tokenIds
+  }
+  await batch.put(gftKey, gftValue)
+
+  for (let index = 0; index < usernames.length; index++) {
+    const username = usernames[index]
+    const tokenId = tokenIds[index]
+    const key = makeKey(prefix.GFT_TWITTER_RECIPIENTS, username)
+    const result = await db.get(key, { asBuffer: false })
+    let gfts = []
+    if (result) {
+      gfts = JSON.parse(result).gfts
+    }
+    // TODO: Add burner key pair and nft media
+    gfts.push({
+      createdDate,
+      tokenId,
+      // tokenAddress,
+      // tokenUrl,
+      // burner key pair
+    })
+    const value = {
+      gfts
+    }
+    await batch.put(key, JSON.stringify(value))
+  }
+
+  await batch.write()
 }
 
 async function upsertTwitterUser(token, tokenSecret, profile) {
@@ -31,7 +77,14 @@ function makeKey(prefix, uniqueKey) {
   return prefix + uniqueKey
 }
 
+function datePath() {
+  const date = new Date()
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}/${date.getTime()}`
+}
+
 module.exports = {
   db,
+  getTwitterRecipientGfts,
+  createTwitterGft,
   upsertTwitterUser
 }
