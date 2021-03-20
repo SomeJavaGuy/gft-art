@@ -19,25 +19,34 @@ configurePassport()
 
 const app = express()
 
+app.set('trust proxy', true)
+
+/* CORS */
+
 const corsOption = {
   origin: ['*', /http:\/\/localhost:\d+/, /\*.gft.art/],
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   exposedHeaders: ['x-auth-token']
 }
-
 app.use(cors(corsOption))
+
+/* PARSERS */
+
 app.use(bodyParser.urlencoded({
   extended: true
 }))
 app.use(bodyParser.json())
+
+/* LOGGING */
+
 app.use(morgan('combined'))
+
+/* ROUTES */
 
 app.get('/', (req, res) => {
   res.send('Alive')
 })
-
-/* ROUTES */
 
 router.route('/auth/twitter/reverse')
   .post(function(req, res) {
