@@ -7,7 +7,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const request = require('request')
 const morgan = require('morgan')
-
+require('dotenv').config()
 const { generateToken, sendToken } = require('./auth')
 const db = require('./db')
 const configurePassport = require('./passport.js')
@@ -136,6 +136,31 @@ router.post('/gft/twitter', function (req, res) {
     .catch((err) => {
       res.status(500).send({ error: err.message })
     })
+})
+
+router.post('/twitter/replies', function (req, res) {
+  let conversationId;
+  let length = 100;
+
+  try {
+    ({ conversationId, length } = req.body)
+
+    request.get({
+      url: `https://api.twitter.com/2/tweets/search/recent?query=conversation_id:${conversationId}&tweet.fields=in_reply_to_user_id,author_id,created_at,conversation_id&max_results=100`,
+      headers: {
+        'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
+      }
+    },
+      function (err, r, body) {
+        if (err) return res.send(500, { message: err.message })
+        const tweets = JSON.parse(body).data.slice(0, length)
+        res.send({ tweets })
+      }
+    )
+
+  } catch (err) {
+    res.status(500).send({ error: err.message })
+  }
 })
 
 app.use('/api/v1', router)
