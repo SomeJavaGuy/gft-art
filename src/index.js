@@ -126,6 +126,7 @@ router.post('/gft/twitter', function (req, res) {
   try {
     ({ usernames, tokenIds, contractAddress } = req.body)
     assert(usernames.length == tokenIds.length)
+    assert(contractAddress)
   } catch (err) {
     res.status(500).send({ error: err.message })
   }
