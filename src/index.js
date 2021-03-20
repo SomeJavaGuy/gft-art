@@ -106,13 +106,18 @@ router.route('/auth/twitter')
     return next();
   }, generateToken, sendToken)
 
-router.get('/gft/twitter/recipients/:username', function (req, res) {
-  // TODO: must be an authorized request so we don't share burners with everyone
-  db.getTwitterRecipientGfts(req.params.username).then((data) => {
+router.get('/gft/twitter/recipients/:username', passport.authenticate('twitter-token', { session: false }), function (req, res) {
+  const username = req.user?.profile.username
+
+  if (req.params.username != username) {
+    return res.sendStatus(401)
+  }
+
+  db.getTwitterRecipientGfts(username).then((data) => {
     res.send(JSON.stringify(data))
   })
     .catch((err) => {
-      res.status(500).send(err.message)
+      res.status(500).send({ error: err.message })
     })
 })
 
