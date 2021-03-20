@@ -125,8 +125,8 @@ router.post('/gft/twitter', function (req, res) {
     res.status(500).send({ error: err.message })
   }
 
-  db.createTwitterGft(contractAddress, usernames, tokenIds).then(() => {
-    res.sendStatus(200)
+  db.createTwitterGft(contractAddress, usernames, tokenIds).then((addresses) => {
+    res.send({ addresses })
   })
     .catch((err) => {
       res.status(500).send({ error: err.message })

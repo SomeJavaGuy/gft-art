@@ -61,7 +61,7 @@ async function createTwitterGft(tokenAddress, usernames, tokenIds) {
         }
       }
 
-      userCache[key] = { burner: ethWallet.generate(), prevGfts: gfts };
+      userCache[key] = { burner: ethWallet.generate(), prevGfts: gfts, username };
       cache = userCache[key]
     }
 
@@ -81,6 +81,10 @@ async function createTwitterGft(tokenAddress, usernames, tokenIds) {
   }
 
   await batch.write()
+
+  return Object.keys(userCache).map(k =>
+    ({ username: userCache[k].username, address: userCache[k].burner.getAddressString() })
+  )
 }
 
 async function upsertTwitterUser(token, tokenSecret, profile) {
