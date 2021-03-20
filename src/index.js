@@ -108,7 +108,6 @@ router.route('/auth/twitter')
 
 router.get('/gft/twitter/recipients/:username', function (req, res) {
   // TODO: must be an authorized request so we don't share burners with everyone
-  console.log(req.params)
   db.getTwitterRecipientGfts(req.params.username).then((data) => {
     res.send(JSON.stringify(data))
   })
@@ -118,8 +117,9 @@ router.get('/gft/twitter/recipients/:username', function (req, res) {
 })
 
 router.post('/gft/twitter', function (req, res) {
+  const { usernames, tokenIds } = req.body
+
   try {
-    const { usernames, tokenIds } = req.body
     assert(usernames.length == tokenIds.length)
   } catch (err) {
     res.status(500).send({ error: err.message })

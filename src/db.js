@@ -40,11 +40,22 @@ async function createTwitterGft(usernames, tokenIds) {
     const username = usernames[index]
     const tokenId = tokenIds[index]
     const key = makeKey(prefix.GFT_TWITTER_RECIPIENTS, username)
-    const result = await db.get(key, { asBuffer: false })
+
     let gfts = []
-    if (result) {
-      gfts = JSON.parse(result).gfts
+
+    try {
+      const result = await db.get(key, { asBuffer: false })
+      if (result) {
+        gfts = JSON.parse(result).gfts
+      }
+    } catch (err) {
+      if (err.notFound) {
+        // pass
+      } else {
+        throw err
+      }
     }
+
     // TODO: Add burner key pair and nft media
     gfts.push({
       createdDate,
