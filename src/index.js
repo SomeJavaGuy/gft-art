@@ -52,7 +52,7 @@ app.get('/', (req, res) => {
   res.send('Alive')
 })
 
-const oauth_callback = (process.env.NODE_ENV == 'production') ? 'http%3A%2F%2Fapi.gft.art%2Ftwitter-callback': 'http%3A%2F%2Flocalhost%3A3000%2Ftwitter-callback'
+const oauth_callback = (process.env.NODE_ENV == 'production') ? 'https%3A%2F%2Fapi.gft.art%2Ftwitter-callback': 'http%3A%2F%2Flocalhost%3A3000%2Ftwitter-callback'
 
 router.route('/auth/twitter/reverse')
   .post(function (req, res) {
