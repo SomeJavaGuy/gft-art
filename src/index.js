@@ -139,30 +139,107 @@ router.post('/gft/twitter', function (req, res) {
     })
 })
 
-router.post('/twitter/replies', function (req, res) {
-  let conversationId;
-  let length = 100;
+router.get('/twitter/:tweetId', function (req, res) {
+  const { tweetId } = req.params
 
   try {
-    ({ conversationId, length } = req.body)
+    assert(tweetId)
+  } catch (err) {
+    if (err) return res.status(500).send({ message: err.message })
+  }
 
-    request.get({
-      url: `https://api.twitter.com/2/tweets/search/recent?query=conversation_id:${conversationId}&tweet.fields=in_reply_to_user_id,author_id,created_at,conversation_id&max_results=100`,
+  request.get({
+    url: `https://api.twitter.com/2/tweets?ids=${tweetId}&tweet.fields=conversation_id,created_at`,
+      headers: {
+        'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
+      }
+  }, function (err, resp, body) {
+    if (err) return res.status(500).send({ message: err.message })
+    res.send(body)
+  })
+})
+
+router.get('/twitter/:tweetId/replies', function (req, res) {
+  const DURATION = 60 * 1000 * 60 // 1 hour
+  const DELAY = 12 * 1000// 12 seconds
+
+  const { tweetId } = req.params
+  let { limit } = req.query
+
+  try {
+    assert(tweetId)
+    assert(limit)
+    limit = parseInt(limit, 10)
+  } catch (err) {
+    if (err) return res.status(500).send({ message: err.message })
+  }
+
+  let deadline;
+
+  request.get({
+    url: `https://api.twitter.com/2/tweets?ids=${tweetId}&tweet.fields=conversation_id,created_at`,
+      headers: {
+        'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
+      }
+  }, async function (err, resp, body) {
+    if (err) return res.send(500, { message: err.message })
+    console.log(body)
+    const tweet = JSON.parse(body).data[0]
+    const createdAt = new Date(tweet.created_at)
+    deadline = createdAt.getTime() + DURATION
+    deadline = Math.min(Date.now() - DELAY, deadline)
+    deadline = new Date(deadline)
+
+    console.log(deadline)
+
+    const eligibleUsernames = new Set()
+
+    let hardStop = 50
+    let nextPageToken = await addUsernamesThatReplied(tweetId, deadline, eligibleUsernames)
+
+    while(nextPageToken && (hardStop > 0)) {
+      nextPageToken = await addUsernamesThatReplied(tweetId, deadline, eligibleUsernames, nextPageToken)
+      hardStop -= 1
+      console.log(nextPageToken, hardStop, eligibleUsernames.size)
+    }
+
+    const usernames = Array.from(eligibleUsernames)
+    const earliestToLatest = usernames.reverse()
+
+    res.send({ usernames: earliestToLatest.slice(0, limit) })
+  })
+})
+
+async function addUsernamesThatReplied(tweetId, deadline, usernameSet, nextPageToken) {
+  let url = `https://api.twitter.com/2/tweets/search/recent?query=conversation_id:${tweetId}&end_time=${deadline.toISOString()}&tweet.fields=id,in_reply_to_user_id,author_id,created_at&expansions=author_id`
+
+  nextPageToken && (url += `&next_token=${nextPageToken}`)
+
+  return new Promise((resolve, reject) => {
+  request.get({
+    url,
       headers: {
         'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`
       }
     },
-      function (err, r, body) {
-        if (err) return res.send(500, { message: err.message })
-        const tweets = JSON.parse(body).data.slice(0, length)
-        res.send({ tweets })
+      function (err, resp, body) {
+        if (err) reject(err)
+        body = JSON.parse(body)
+        if (body.errors) {
+          console.error(body.errors)
+          reject('Bad request')
+        }
+        const users = body.includes.users
+        for (let index = 0; index < users.length; index++) {
+          const user = users[index]
+          usernameSet.add(user.username)
+        }
+        resolve(body.meta.next_token)
       }
     )
+  })
 
-  } catch (err) {
-    res.status(500).send({ error: err.message })
-  }
-})
+}
 
 app.use('/api/v1', router)
 
