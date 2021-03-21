@@ -27,11 +27,12 @@ app.set('trust proxy', true)
 /* CORS */
 
 const corsOption = {
-  origin: ['*', /http:\/\/localhost:\d+/, /\*.gft.art/],
+origin: '*',
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   exposedHeaders: ['x-auth-token']
 }
+// enable all cors
 app.use(cors(corsOption))
 
 /* PARSERS */
